@@ -23,6 +23,11 @@ COPY package*.json ./
 # youtube-dl-exec chequea Python en el preinstall; usamos el binario yt-dlp standalone, así que lo salteamos.
 RUN YOUTUBE_DL_SKIP_PYTHON_CHECK=1 npm install --omit=dev
 
+# YouTube cambia con frecuencia; nightly recibe antes las correcciones del extractor.
+RUN curl -fsSL -o node_modules/youtube-dl-exec/bin/yt-dlp \
+      https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp \
+  && chmod +x node_modules/youtube-dl-exec/bin/yt-dlp
+
 COPY . .
 
 ENV NODE_ENV=production

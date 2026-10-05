@@ -45,7 +45,8 @@ const COOKIES_FILE = path.join(config.memoryDir, 'cookies.txt');
 /** Opciones para yt-dlp: usa otro client y cookies si están disponibles. */
 function ytOpts(extra = {}, useProxy = false) {
   const opts = { noWarnings: true, noCheckCertificates: true, retries: 1, ...extra };
-  if (process.env.YT_EXTRACTOR_ARGS) opts.extractorArgs = process.env.YT_EXTRACTOR_ARGS;
+  opts.extractorArgs = process.env.YT_EXTRACTOR_ARGS
+    || 'youtube:player_client=mweb,-tv_downgraded';
   if (useProxy && process.env.YT_PROXY) opts.proxy = process.env.YT_PROXY;
   if (fs.existsSync(COOKIES_FILE)) opts.cookies = COOKIES_FILE;
   return opts;
