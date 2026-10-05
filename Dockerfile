@@ -6,8 +6,12 @@ FROM node:22-slim
 
 # ffmpeg (audio), python3 (yt-dlp), curl (descarga del plugin)
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ffmpeg python3 ca-certificates curl \
+  && apt-get install -y --no-install-recommends ffmpeg python3 ca-certificates curl unzip \
   && rm -rf /var/lib/apt/lists/*
+
+# yt-dlp necesita un runtime JavaScript para resolver los desafíos de YouTube.
+RUN curl -fsSL https://deno.land/install.sh | sh -s -- -y
+ENV PATH="/root/.deno/bin:${PATH}"
 
 # Plugin de yt-dlp para el proveedor de PO Token
 RUN mkdir -p /root/.config/yt-dlp/plugins \
