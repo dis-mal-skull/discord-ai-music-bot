@@ -47,16 +47,31 @@ function ytOpts(extra = {}) {
   return opts;
 }
 
-/** Resuelve una búsqueda a un track reproducible. */
+/** Resuelve una búsqueda probando varios orígenes (SoundCloud primero, YouTube como respaldo). */
 async function resolve(query) {
-  const search = await youtubedl(`ytsearch1:${query}`, ytOpts({ dumpSingleJson: true, skipDownload: true }));
-  const info = (search.entries && search.entries[0]) || search;
-  const direct = await youtubedl(`https://www.youtube.com/watch?v=${info.id}`, ytOpts({ getUrl: true, format: 'bestaudio/best' }));
-  return {
-    title: info.title,
-    url: String(direct).trim().split('\n')[0],
-    duration: info.duration,
-  };
+  const sources = (process.env.MUSIC_SOURCE || 'youtube,soundcloud')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  let lastErr;
+  for (const src of sources) {
+    const prefix = src === 'youtube' ? 'ytsearch1' : 'scsearch1';
+    try {
+      const search = await youtubedl(`${prefix}:${query}`, ytOpts({ dumpSingleJson: true, skipDownload: true }));
+      const info = (search && search.entries && search.entries[0]) || search;
+      if (!info || !info.title) throw new Error('sin resultados');
+      const target = info.webpage_url || info.url || `https://www.youtube.com/watch?v=${info.id}`;
+      const direct = await youtubedl(target, ytOpts({ getUrl: true, format: 'bestaudio/best' }));
+      const url = String(direct).trim().split('\n')[0];
+      if (!url.startsWith('http')) throw new Error('sin url reproducible');
+      console.log(`[music] fuente=${src} -> ${info.title}`);
+      return { title: info.title, url, duration: info.duration };
+    } catch (e) {
+      lastErr = e;
+      console.log(`[music] fuente=${src} falló: ${String(e.message).slice(0, 100)}`);
+    }
+  }
+  throw lastErr || new Error('No se pudo resolver la búsqueda');
 }
 
 /** Crea un AudioResource con ffmpeg (PCM crudo 48k estéreo). */
