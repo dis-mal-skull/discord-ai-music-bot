@@ -80,6 +80,11 @@ async function resolve(query) {
 
 /** Crea un AudioResource con ffmpeg (PCM crudo 48k estéreo). */
 function streamResource(url) {
+  const env = { ...process.env };
+  if (process.env.YT_PROXY) {
+    env.http_proxy = process.env.YT_PROXY;
+    env.https_proxy = process.env.YT_PROXY;
+  }
   const ffmpeg = spawn(
     FFMPEG,
     [
@@ -89,7 +94,7 @@ function streamResource(url) {
       '-f', 's16le', '-ar', '48000', '-ac', '2',
       'pipe:1',
     ],
-    { stdio: ['ignore', 'pipe', 'pipe'] },
+    { stdio: ['ignore', 'pipe', 'pipe'], env },
   );
   let total = 0;
   ffmpeg.stdout.once('data', () => console.log('[music] ffmpeg emitiendo audio'));
