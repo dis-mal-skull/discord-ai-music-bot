@@ -34,6 +34,8 @@ function getQueue(guildId) {
       lastMessage: null,
       idleTimer: null,
       startedAt: null,
+      advancing: false,
+      skipRequested: false,
     };
     queues.set(guildId, q);
   }
@@ -255,6 +257,11 @@ async function ensureConnection(guild, voiceChannel) {
 
 function playNext(guild) {
   const q = getQueue(guild.id);
+  if (q.advancing) return;
+  q.advancing = true;
+  q.skipRequested = false;
+
+  try {
   if (q.idleTimer) {
     clearTimeout(q.idleTimer);
     q.idleTimer = null;
@@ -280,7 +287,10 @@ function playNext(guild) {
   } catch (e) {
     console.error('[music] play:', e.message);
     q.playing = false;
-    playNext(guild);
+    setImmediate(() => playNext(guild));
+  }
+  } finally {
+    q.advancing = false;
   }
 }
 
@@ -299,7 +309,14 @@ export async function enqueue(guild, voiceChannel, query, requester, controlChan
 export function skip(guild) {
   const q = queues.get(guild.id);
   if (q?.player && q.connection) {
+    const current = q.current;
+    q.skipRequested = true;
     q.player.stop();
+    // Discord.js normalmente emite Idle, pero este fallback cubre transiciones
+    // en las que el evento se pierde mientras ffmpeg todavía está cerrando.
+    setImmediate(() => {
+      if (q.skipRequested && q.current === current) playNext(guild);
+    });
     return true;
   }
   return false;
