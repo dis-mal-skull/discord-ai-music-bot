@@ -69,7 +69,7 @@ async function resolve(query) {
       const url = String(direct).trim().split('\n')[0];
       if (!url.startsWith('http')) throw new Error('sin url reproducible');
       console.log(`[music] fuente=${src} -> ${info.title}`);
-      return { title: info.title, url, duration: info.duration };
+      return { title: info.title, url, webpage: info.webpage_url || info.url || '', source: src, duration: info.duration };
     } catch (e) {
       lastErr = e;
       console.log(`[music] fuente=${src} falló: ${String(e.message).slice(0, 100)}`);
@@ -114,7 +114,7 @@ function logHistory(track) {
   try {
     fs.appendFileSync(
       path.join(config.memoryDir, 'music-history.jsonl'),
-      `${JSON.stringify({ ts: new Date().toISOString(), title: track.title, requester: track.requester ?? null })}\n`,
+      `${JSON.stringify({ ts: new Date().toISOString(), title: track.title, source: track.source ?? null, url: track.webpage ?? null, requester: track.requester ?? null })}\n`,
     );
   } catch (e) {
     console.error('[music] history:', e.message);
@@ -159,11 +159,13 @@ function postNowPlaying(guild, track) {
     q.lastMessage.edit({ components: [buildControls(guild, true)] }).catch(() => {});
     q.lastMessage = null;
   }
+  const srcLabel = track.source ? track.source.charAt(0).toUpperCase() + track.source.slice(1) : 'fuente';
+  const link = track.webpage ? `\n[${srcLabel} ↗](${track.webpage})` : '';
   const embed = new EmbedBuilder()
     .setColor(0x1db954)
     .setAuthor({ name: '🎶 Reproduciendo ahora' })
-    .setDescription(`**${track.title}**`)
-    .setFooter({ text: `Pedido por ${track.requester ?? 'alguien'} · ${q.tracks.length} en cola` });
+    .setDescription(`**${track.title}**${link}`)
+    .setFooter({ text: `Fuente: ${track.source ?? '?'} · Pedido por ${track.requester ?? 'alguien'} · ${q.tracks.length} en cola` });
   q.controlChannel
     .send({ embeds: [embed], components: [buildControls(guild)] })
     .then((m) => { q.lastMessage = m; })
