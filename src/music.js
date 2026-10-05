@@ -37,21 +37,25 @@ function getQueue(guildId) {
   return q;
 }
 
+const COOKIES_FILE = path.join(config.memoryDir, 'cookies.txt');
+
+/** Opciones para yt-dlp: usa otro client y cookies si están disponibles. */
+function ytOpts(extra = {}) {
+  const opts = {
+    noWarnings: true,
+    noCheckCertificates: true,
+    extractorArgs: process.env.YT_EXTRACTOR_ARGS || 'youtube:player_client=android',
+    ...extra,
+  };
+  if (fs.existsSync(COOKIES_FILE)) opts.cookies = COOKIES_FILE;
+  return opts;
+}
+
 /** Resuelve una búsqueda a un track reproducible. */
 async function resolve(query) {
-  const search = await youtubedl(`ytsearch1:${query}`, {
-    dumpSingleJson: true,
-    noWarnings: true,
-    noCheckCertificates: true,
-    skipDownload: true,
-  });
+  const search = await youtubedl(`ytsearch1:${query}`, ytOpts({ dumpSingleJson: true, skipDownload: true }));
   const info = (search.entries && search.entries[0]) || search;
-  const direct = await youtubedl(`https://www.youtube.com/watch?v=${info.id}`, {
-    getUrl: true,
-    format: 'bestaudio/best',
-    noWarnings: true,
-    noCheckCertificates: true,
-  });
+  const direct = await youtubedl(`https://www.youtube.com/watch?v=${info.id}`, ytOpts({ getUrl: true, format: 'bestaudio/best' }));
   return {
     title: info.title,
     url: String(direct).trim().split('\n')[0],

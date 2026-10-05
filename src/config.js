@@ -14,4 +14,5 @@ export const config = {
   musicChannelId: process.env.MUSIC_CHANNEL_ID || '',
   memoryDir: process.env.MEMORY_DIR || './data',
   maxHistory: Number.parseInt(process.env.MAX_HISTORY || '12', 10),
+  ytCookiesB64: process.env.YT_COOKIES_B64 || '',
 };

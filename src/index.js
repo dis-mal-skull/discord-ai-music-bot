@@ -1,9 +1,22 @@
 import { Client, GatewayIntentBits, Partials, Events, MessageFlags } from 'discord.js';
+import fs from 'node:fs';
+import path from 'node:path';
 import { config } from './config.js';
 import { chat } from './mistral.js';
 import { getHistory, appendHistory, logDiary } from './store.js';
 import { buildSystemPrompt } from './prompts.js';
 import * as music from './music.js';
+
+// Si hay cookies de YouTube en base64, las escribe en disco para yt-dlp.
+if (config.ytCookiesB64) {
+  try {
+    fs.mkdirSync(config.memoryDir, { recursive: true });
+    fs.writeFileSync(path.join(config.memoryDir, 'cookies.txt'), Buffer.from(config.ytCookiesB64, 'base64'));
+    console.log('[dismal] cookies de YouTube cargadas desde YT_COOKIES_B64');
+  } catch (e) {
+    console.error('[dismal] no pude escribir las cookies:', e.message);
+  }
+}
 
 /** Pide a Mistral que arme una lista de títulos a partir de una descripción. */
 async function suggestSongs(payload) {
