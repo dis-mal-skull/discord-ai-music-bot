@@ -44,15 +44,29 @@ const COOKIES_FILE = path.join(config.memoryDir, 'cookies.txt');
 
 /** Opciones para yt-dlp: usa otro client y cookies si están disponibles. */
 function ytOpts(extra = {}) {
-  const opts = { noWarnings: true, noCheckCertificates: true, retries: 3, extractorRetries: 3, ...extra };
+  const opts = { noWarnings: true, noCheckCertificates: true, retries: 1, ...extra };
   if (process.env.YT_EXTRACTOR_ARGS) opts.extractorArgs = process.env.YT_EXTRACTOR_ARGS;
   if (process.env.YT_PROXY) opts.proxy = process.env.YT_PROXY;
   if (fs.existsSync(COOKIES_FILE)) opts.cookies = COOKIES_FILE;
   return opts;
 }
 
-/** Resuelve una búsqueda probando varios orígenes (SoundCloud primero, YouTube como respaldo). */
+/** Resuelve una búsqueda. Si es una URL, la reproduce directo (sin buscar ni fallback). */
 async function resolve(query) {
+  const trimmed = query.trim();
+  const isUrl = /^https?:\/\//i.test(trimmed);
+
+  if (isUrl) {
+    const src = /soundcloud\./i.test(trimmed) ? 'soundcloud' : /youtu\.?be/i.test(trimmed) ? 'youtube' : 'link';
+    console.log(`[music] URL directa (${src})`);
+    const info = await youtubedl(trimmed, ytOpts({ dumpSingleJson: true, skipDownload: true }));
+    const v = (info.entries && info.entries[0]) || info;
+    const direct = await youtubedl(trimmed, ytOpts({ getUrl: true, format: 'bestaudio/best' }));
+    const url = String(direct).trim().split('\n')[0];
+    if (!url.startsWith('http')) throw new Error('sin url reproducible');
+    return { title: v.title, url, webpage: v.webpage_url || trimmed, source: src, duration: v.duration };
+  }
+
   const sources = (process.env.MUSIC_SOURCE || 'youtube,soundcloud')
     .split(',')
     .map((s) => s.trim())
@@ -61,7 +75,7 @@ async function resolve(query) {
   for (const src of sources) {
     const prefix = src === 'youtube' ? 'ytsearch1' : 'scsearch1';
     try {
-      const search = await youtubedl(`${prefix}:${query}`, ytOpts({ dumpSingleJson: true, skipDownload: true }));
+      const search = await youtubedl(`${prefix}:${trimmed}`, ytOpts({ dumpSingleJson: true, skipDownload: true }));
       const info = (search && search.entries && search.entries[0]) || search;
       if (!info || !info.title) throw new Error('sin resultados');
       const target = info.webpage_url || info.url || `https://www.youtube.com/watch?v=${info.id}`;
