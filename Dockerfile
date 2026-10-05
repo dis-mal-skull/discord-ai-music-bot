@@ -1,14 +1,13 @@
 FROM node:22-slim
 
-# ffmpeg del sistema como respaldo (ffmpeg-static también provee su binario)
+# ffmpeg (audio) + python3 (requerido por el binario yt-dlp de youtube-dl-exec)
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ffmpeg ca-certificates \
+  && apt-get install -y --no-install-recommends ffmpeg python3 ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 COPY package*.json ./
-# youtube-dl-exec chequea Python en el preinstall; usamos el binario yt-dlp standalone, así que lo salteamos.
 RUN YOUTUBE_DL_SKIP_PYTHON_CHECK=1 npm install --omit=dev
 
 COPY . .
