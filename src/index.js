@@ -49,7 +49,7 @@ const client = new Client({
 });
 
 client.once(Events.ClientReady, (c) => {
-  console.log(`[dismal] conectado como ${c.user.tag} | modelo=${config.mistralModel} | PID=${process.pid}`);
+  console.log(`[dismal] conectado como ${c.user.tag} | modo=${config.musicOnly ? 'solo-musica' : `ia:${config.mistralModel}`} | PID=${process.pid}`);
   console.log(`[dismal] menciones: <@${c.user.id}>  | comandos: play, skip, stop, pause, resume, queue`);
   console.log('[dismal] IMPORTANTE: si ves otro proceso con el mismo bot, cerralo (causa doble respuesta).');
 });
@@ -82,7 +82,7 @@ client.on(Events.MessageCreate, async (message) => {
     let songs;
     if (/[\n;]/.test(payload)) {
       songs = payload.split(/[\n;]+/).map(clean).filter(Boolean);
-    } else if (/(lista|canci[oó]n(es)?|temas?)/i.test(payload)) {
+    } else if (!config.musicOnly && /(lista|canci[oó]n(es)?|temas?)/i.test(payload)) {
       try {
         songs = await suggestSongs(payload);
         console.log(`[dismal] lista sugerida por IA: ${songs.join(' | ')}`);
@@ -144,6 +144,10 @@ client.on(Events.MessageCreate, async (message) => {
       ? `🎶 Sonando: **${q.current}**\n📋 En cola: ${q.tracks.length ? q.tracks.map((t, i) => `${i + 1}. ${t}`).join(' · ') : 'nada'}`
       : 'No hay nada en la cola.';
     return void message.reply(body).catch(() => {});
+  }
+
+  if (config.musicOnly) {
+    return void message.reply('Solo reproduzco música. Usá `play <tema o URL>` o `queue`, `skip`, `pause`, `resume` y `stop`.').catch(() => {});
   }
 
   // ---- Consulta libre -> Mistral ----

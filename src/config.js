@@ -8,8 +8,9 @@ function required(name) {
 
 export const config = {
   token: required('DISCORD_TOKEN'),
-  mistralKey: required('MISTRAL_API_KEY'),
+  mistralKey: process.env.MISTRAL_API_KEY || '',
   mistralModel: process.env.MISTRAL_MODEL || 'mistral-small-latest',
+  musicOnly: !/^(0|false|no)$/i.test(process.env.MUSIC_ONLY || 'true'),
   guildId: process.env.GUILD_ID || '',
   musicChannelId: process.env.MUSIC_CHANNEL_ID || '',
   memoryDir: process.env.MEMORY_DIR || './data',
