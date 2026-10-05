@@ -11,9 +11,12 @@ import {
   StreamType,
 } from '@discordjs/voice';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
-import ffmpegPath from 'ffmpeg-static';
+import ffmpegStatic from 'ffmpeg-static';
 import youtubedl from 'youtube-dl-exec';
 import { config } from './config.js';
+
+// ffmpeg-static segfaultea en algunos Linux; preferimos el ffmpeg del sistema si existe.
+const FFMPEG = process.env.FFMPEG_PATH || (process.platform === 'win32' ? ffmpegStatic : 'ffmpeg');
 
 /** Colas por guild. */
 const queues = new Map();
@@ -78,7 +81,7 @@ async function resolve(query) {
 /** Crea un AudioResource con ffmpeg (PCM crudo 48k estéreo). */
 function streamResource(url) {
   const ffmpeg = spawn(
-    ffmpegPath,
+    FFMPEG,
     [
       '-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5',
       '-i', url,
