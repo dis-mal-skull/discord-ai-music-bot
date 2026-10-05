@@ -43,10 +43,10 @@ function getQueue(guildId) {
 const COOKIES_FILE = path.join(config.memoryDir, 'cookies.txt');
 
 /** Opciones para yt-dlp: usa otro client y cookies si están disponibles. */
-function ytOpts(extra = {}) {
+function ytOpts(extra = {}, useProxy = false) {
   const opts = { noWarnings: true, noCheckCertificates: true, retries: 1, ...extra };
   if (process.env.YT_EXTRACTOR_ARGS) opts.extractorArgs = process.env.YT_EXTRACTOR_ARGS;
-  if (process.env.YT_PROXY) opts.proxy = process.env.YT_PROXY;
+  if (useProxy && process.env.YT_PROXY) opts.proxy = process.env.YT_PROXY;
   if (fs.existsSync(COOKIES_FILE)) opts.cookies = COOKIES_FILE;
   return opts;
 }
@@ -59,9 +59,10 @@ async function resolve(query) {
   if (isUrl) {
     const src = /soundcloud\./i.test(trimmed) ? 'soundcloud' : /youtu\.?be/i.test(trimmed) ? 'youtube' : 'link';
     console.log(`[music] URL directa (${src})`);
-    const info = await youtubedl(trimmed, ytOpts({ dumpSingleJson: true, skipDownload: true }));
+    const useProxy = src === 'youtube';
+    const info = await youtubedl(trimmed, ytOpts({ dumpSingleJson: true, skipDownload: true }, useProxy));
     const v = (info.entries && info.entries[0]) || info;
-    const direct = await youtubedl(trimmed, ytOpts({ getUrl: true, format: 'bestaudio/best' }));
+    const direct = await youtubedl(trimmed, ytOpts({ getUrl: true, format: 'bestaudio/best' }, useProxy));
     const url = String(direct).trim().split('\n')[0];
     if (!url.startsWith('http')) throw new Error('sin url reproducible');
     return { title: v.title, url, webpage: v.webpage_url || trimmed, source: src, duration: v.duration };
@@ -75,11 +76,12 @@ async function resolve(query) {
   for (const src of sources) {
     const prefix = src === 'youtube' ? 'ytsearch1' : 'scsearch1';
     try {
-      const search = await youtubedl(`${prefix}:${trimmed}`, ytOpts({ dumpSingleJson: true, skipDownload: true }));
+      const useProxy = src === 'youtube';
+      const search = await youtubedl(`${prefix}:${trimmed}`, ytOpts({ dumpSingleJson: true, skipDownload: true }, useProxy));
       const info = (search && search.entries && search.entries[0]) || search;
       if (!info || !info.title) throw new Error('sin resultados');
       const target = info.webpage_url || info.url || `https://www.youtube.com/watch?v=${info.id}`;
-      const direct = await youtubedl(target, ytOpts({ getUrl: true, format: 'bestaudio/best' }));
+      const direct = await youtubedl(target, ytOpts({ getUrl: true, format: 'bestaudio/best' }, useProxy));
       const url = String(direct).trim().split('\n')[0];
       if (!url.startsWith('http')) throw new Error('sin url reproducible');
       console.log(`[music] fuente=${src} -> ${info.title}`);
@@ -93,9 +95,9 @@ async function resolve(query) {
 }
 
 /** Crea un AudioResource con ffmpeg (PCM crudo 48k estéreo). */
-function streamResource(url) {
+function streamResource(url, useProxy = false) {
   const env = { ...process.env };
-  if (process.env.YT_PROXY) {
+  if (useProxy && process.env.YT_PROXY) {
     env.http_proxy = process.env.YT_PROXY;
     env.https_proxy = process.env.YT_PROXY;
   }
@@ -271,7 +273,7 @@ function playNext(guild) {
   q.startedAt = Date.now();
   console.log(`[music] reproduciendo: ${track.title} (${track.duration ?? '?'}s)`);
   try {
-    q.player.play(streamResource(track.url));
+    q.player.play(streamResource(track.url, track.source === 'youtube'));
     logHistory(track);
     postNowPlaying(guild, track);
   } catch (e) {
