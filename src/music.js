@@ -41,12 +41,8 @@ const COOKIES_FILE = path.join(config.memoryDir, 'cookies.txt');
 
 /** Opciones para yt-dlp: usa otro client y cookies si están disponibles. */
 function ytOpts(extra = {}) {
-  const opts = {
-    noWarnings: true,
-    noCheckCertificates: true,
-    extractorArgs: process.env.YT_EXTRACTOR_ARGS || 'youtube:player_client=android',
-    ...extra,
-  };
+  const opts = { noWarnings: true, noCheckCertificates: true, ...extra };
+  if (process.env.YT_EXTRACTOR_ARGS) opts.extractorArgs = process.env.YT_EXTRACTOR_ARGS;
   if (fs.existsSync(COOKIES_FILE)) opts.cookies = COOKIES_FILE;
   return opts;
 }
