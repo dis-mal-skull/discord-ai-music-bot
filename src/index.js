@@ -89,12 +89,14 @@ client.on(Events.MessageCreate, async (message) => {
     const controlChannel = message.guild.channels.cache.get(config.musicChannelId) ?? message.channel;
     const added = [];
     const failed = [];
+    let lastError = '';
     for (const song of songs) {
       try {
         const track = await music.enqueue(message.guild, voiceChannel, song, message.author.username, controlChannel);
         added.push(track.title);
       } catch (err) {
         console.error('[music] enqueue:', err.message);
+        lastError = err.message;
         failed.push(song);
       }
     }
@@ -103,6 +105,7 @@ client.on(Events.MessageCreate, async (message) => {
       ? `✅ Agregué ${added.length} tema(s):\n${added.map((t, i) => `${i + 1}. ${t}`).join('\n')}`
       : 'No pude agregar esos temas.';
     if (failed.length) reply += `\n⚠️ No encontré: ${failed.join(', ')}`;
+    if (lastError) reply += `\n🐞 \`${String(lastError).slice(0, 350)}\``;
     reply += `\n📋 En cola: ${q.tracks.length}`;
     await message.reply(reply).catch(() => {});
     return;
