@@ -1,7 +1,6 @@
-FROM node:20-slim
+FROM node:22-slim
 
-# yt-dlp standalone requiere Python no; ffmpeg-static provee el binario de ffmpeg.
-# Instalamos ffmpeg del sistema como respaldo (opcional, robusto).
+# ffmpeg del sistema como respaldo (ffmpeg-static también provee su binario)
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ffmpeg ca-certificates \
   && rm -rf /var/lib/apt/lists/*
@@ -9,7 +8,8 @@ RUN apt-get update \
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install --omit=dev
+# youtube-dl-exec chequea Python en el preinstall; usamos el binario yt-dlp standalone, así que lo salteamos.
+RUN YOUTUBE_DL_SKIP_PYTHON_CHECK=1 npm install --omit=dev
 
 COPY . .
 
